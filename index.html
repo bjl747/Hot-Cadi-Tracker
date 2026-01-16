@@ -462,13 +462,18 @@
 
         initAuth();
 
-        onAuthStateChanged(auth, (user) => {
+	onAuthStateChanged(auth, (user) => {
             if (user) {
-                currentUser = user;
-                console.log("User authenticated:", user.uid);
+                // --- THE FIX: FORCE A SHARED ID ---
+                // This string acts as your "Team Account" so all devices see the same data.
+                const sharedUid = "recruiter_dashboard_main"; 
+
+                // We override the device's specific ID with our shared one
+                currentUser = { uid: sharedUid }; 
+                console.log("User authenticated (Shared):", sharedUid);
                 
-                // Start listening to the database
-                const q = query(collection(db, 'artifacts', appId, 'users', user.uid, 'candidates'));
+                // Start listening to the database (Using the shared ID)
+                const q = query(collection(db, 'artifacts', appId, 'users', sharedUid, 'candidates'));
                 
                 onSnapshot(q, (snapshot) => {
                     candidates = snapshot.docs.map(doc => ({
@@ -477,7 +482,7 @@
                     }));
                     
                     // Run logic and render
-                    performAutoRollover(); // Check dates on load
+                    performAutoRollover(); 
                     renderList();
                 }, (error) => {
                     console.error("Error fetching candidates:", error);
