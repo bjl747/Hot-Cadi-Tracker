@@ -158,6 +158,12 @@
                 </div>
                 <h1 class="text-2xl font-bold tracking-wider text-slate-100 neon-text-rose">HOT LIST <span class="text-rose-400 text-xs align-top opacity-80 font-mono border border-rose-900/50 px-1 rounded ml-1">BETA</span></h1>
             </div>
+<button id="emailListBtn" class="bg-emerald-600 hover:bg-emerald-500 border border-emerald-500 text-white font-semibold py-2 px-5 rounded shadow-sm transition hover:scale-105 flex items-center gap-2 text-sm uppercase tracking-wide mr-3">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                <span>Email Hot List</span>
+            </button>
             <button id="openModalBtn" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-semibold py-2 px-5 rounded shadow-sm transition hover:scale-105 flex items-center gap-2 text-sm uppercase tracking-wide group">
                 <div class="bg-rose-600 rounded-full p-0.5 group-hover:bg-rose-500 transition">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-white" viewBox="0 0 20 20" fill="currentColor">
@@ -1018,7 +1024,7 @@
             return 'glow-red';
         }
 
-        function setupMapInteractions() {
+function setupMapInteractions() {
             const container = document.getElementById('map-container');
             const statesInput = document.getElementById('statesInterested');
             container.addEventListener('click', (e) => {
@@ -1034,6 +1040,67 @@
                 }
             });
         }
+
+        // --- HOT LIST BUTTON LOGIC ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const btn = document.getElementById('emailListBtn');
+            if (btn) {
+                btn.onclick = async () => {
+                    const originalText = btn.innerHTML;
+                    
+                    // 1. Filter for "Green" candidates (<= 45 days)
+                    const today = new Date();
+                    const hotList = candidates.filter(c => {
+                        if (c.status === 'Placed') return false; 
+                        const targetDate = new Date(c.availDate);
+                        const diffTime = targetDate - today;
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        return diffDays <= 45; 
+                    }).map(c => ({
+                        // 2. Format data for the email
+                        Name: c.fullName,
+                        Avail: c.availDate,
+                        Cred: c.credential,
+                        Lic: c.licenses || "N/A",
+                        Units: c.units || "N/A",
+                        Loc: c.states || "Open",
+                        Pay: c.pay || "Open"
+                    }));
+
+                    if (hotList.length === 0) {
+                        showToast("No candidates available in 45 days.");
+                        return;
+                    }
+
+                    // Visual Feedback
+                    btn.innerHTML = `<span class="animate-pulse">Sending...</span>`;
+                    
+                    // 3. Send to Make.com
+                    const listWebhookUrl = "https://hook.us2.make.com/4alhbwlqbiyo9sl3ekv9wbxjap1sr7fi"; 
+
+                    try {
+                        const response = await fetch(listWebhookUrl, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ 
+                                candidateList: JSON.stringify(hotList) 
+                            })
+                        });
+                        
+                        if(response.ok) {
+                            showToast(`Sent ${hotList.length} candidates!`);
+                        } else {
+                            showToast("Error sending list.");
+                        }
+                    } catch (e) {
+                        console.error(e);
+                        showToast("Network Error.");
+                    } finally {
+                        setTimeout(() => btn.innerHTML = originalText, 2000);
+                    }
+                };
+            }
+        });
 
         function showToast(message) {
             const toast = document.getElementById('toast');
