@@ -1041,20 +1041,24 @@ function setupMapInteractions() {
             });
         }
 
-        // --- HOT LIST BUTTON LOGIC ---
+// --- HOT LIST BUTTON LOGIC ---
         document.addEventListener('DOMContentLoaded', () => {
             const btn = document.getElementById('emailListBtn');
             if (btn) {
                 btn.onclick = async () => {
                     const originalText = btn.innerHTML;
                     
-                    // 1. Filter for "Green" candidates (<= 45 days)
+                    // 1. FILTER UPDATE: Anyone <= 45 Days (Regardless of Status)
                     const today = new Date();
                     const hotList = candidates.filter(c => {
-                        if (c.status === 'Placed') return false; 
+                        // We REMOVED the "if Placed return false" line.
+                        // Now, if they are "Placed" but their end date is soon (Green), they make the list.
+                        
                         const targetDate = new Date(c.availDate);
                         const diffTime = targetDate - today;
                         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        
+                        // Keep if they are Green (<= 45 days)
                         return diffDays <= 45; 
                     }).map(c => ({
                         // 2. Format data for the email
@@ -1064,7 +1068,8 @@ function setupMapInteractions() {
                         Lic: c.licenses || "N/A",
                         Units: c.units || "N/A",
                         Loc: c.states || "Open",
-                        Pay: c.pay || "Open"
+                        Pay: c.pay || "Open",
+                        Status: c.status // Added status so you can see if they are Placed vs Available
                     }));
 
                     if (hotList.length === 0) {
@@ -1101,7 +1106,6 @@ function setupMapInteractions() {
                 };
             }
         });
-
         function showToast(message) {
             const toast = document.getElementById('toast');
             document.getElementById('toastMessage').textContent = message;
